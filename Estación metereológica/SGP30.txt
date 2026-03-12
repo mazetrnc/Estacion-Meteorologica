@@ -1,0 +1,58 @@
+#include <Wire.h>
+#include <Adafruit_SGP30.h>
+
+Adafruit_SGP30 sgp;
+
+void setup() {
+  Serial.begin(9600);
+  while (!Serial) delay(10);
+
+  if (!sgp.begin()) {
+    Serial.println("Sensor not found. Check wiring!");
+    while (1);
+  }
+  Serial.println("SGP30 initialized successfully.");
+}
+
+void loop() {
+  if (sgp.IAQmeasure()) {
+    Serial.print("eCO2: "); Serial.print(sgp.eCO2); Serial.println(" ppm");
+    Serial.print("TVOC: "); Serial.print(sgp.TVOC); Serial.println(" ppb");
+  } else {
+    Serial.println("Measurement failed!");
+  }
+  delay(1000);
+}   
+
+
+
+///////////////////////////////////////////
+
+#include <Adafruit_SGP30.h>
+#include <DHT.h>
+
+Adafruit_SGP30 sgp;
+DHT dht(DHT_PIN, DHT11);
+
+uint32_t getAbsoluteHumidity(float temperature, float humidity) {
+  const float absoluteHumidity = 216.7f * ((humidity / 100.0f) * 6.112f * exp((17.62f * temperature) / (243.12f + temperature)) / (273.15f + temperature));
+  return static_cast<uint32_t>(1000.0f * absoluteHumidity); // mg/m³
+}
+
+void setup() {
+  Serial.begin(9600);
+  sgp.begin();
+  dht.begin();
+}
+
+void loop() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  sgp.setHumidity(getAbsoluteHumidity(t, h)); // Set humidity compensation
+
+  if (sgp.IAQmeasure()) {
+    Serial.print("eCO2: "); Serial.print(sgp.eCO2); Serial.println(" ppm");
+    Serial.print("TVOC: "); Serial.print(sgp.TVOC); Serial.println(" ppb");
+  }
+  delay(1000);
+}   

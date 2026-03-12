@@ -1,0 +1,90 @@
+#include <Wire.h>
+// Instance 1
+TwoWire I2C1 = TwoWire(0);
+#define SDA1 21
+#define SCL1 22
+// Instance 2
+TwoWire I2C2 = TwoWire(1);
+#define SDA2 17
+#define SCL2 16
+
+void setup() {
+  I2C1.begin(SDA1, SCL1, 100000);
+  I2C2.begin(SDA2, SCL2, 100000);
+}
+
+
+//////////////////////////////////////////
+
+
+
+#include <Wire.h>
+#include <Adafruit_BMP085.h> // Common library for BMP180
+#include <HTU21D.h>
+
+// Define Pins
+#define I2C_SDA 21
+#define I2C_SCL 22
+
+Adafruit_BMP085 bmp;
+HTU21D htu21d;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(I2C_SDA, I2C_SCL); // Initialize I2C
+
+  if (!bmp.begin()) {
+    Serial.println("Could not find BMP180");
+  }
+  
+  if (!htu21d.begin()) {
+    Serial.println("Could not find HTU21D");
+  }
+}
+
+void loop() {
+  Serial.print("Temp: "); Serial.print(bmp.readTemperature());
+  Serial.print("Pressure: "); Serial.println(bmp.readPressure());
+  Serial.print("Humidity: "); Serial.println(htu21d.readHumidity());
+  delay(2000);
+}
+
+
+///////////////////////////////////////////////
+#include <Wire.h>
+#include <Adafruit_BMP085.h>
+#include <Adafruit_SGP30.h>
+#include <Adafruit_HTU21DF.h>
+
+// Define TwoWire instances for different buses
+TwoWire I2COne = TwoWire(0);
+TwoWire I2CTwo = TwoWire(1);
+
+// Sensor Objects
+Adafruit_BMP085 bmp;
+Adafruit_SGP30 sgp;
+Adafruit_HTU21DF htu = Adafruit_HTU21DF();
+
+void setup() {
+  Serial.begin(115200);
+
+  // Initialize Bus 1 (Pins 21, 22) - BMP180 & SGP30
+  I2COne.begin(21, 22, 100000); 
+  
+  // Initialize Bus 2 (Pins 17, 16) - HTU21D
+  I2CTwo.begin(17, 16, 100000); 
+
+  if (!bmp.begin(BMP085_ULTRAHIGHRES, &I2COne)) {
+    Serial.println("Could not find BMP180");
+  }
+  if (!sgp.begin(&I2COne)) {
+    Serial.println("Could not find SGP30");
+  }
+  if (!htu.begin(&I2CTwo)) {
+    Serial.println("Could not find HTU21D");
+  }
+}
+
+void loop() {
+  // Read sensors...
+}
