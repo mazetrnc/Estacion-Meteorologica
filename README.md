@@ -24,6 +24,7 @@ La **velocidad del viento** se obtiene mediante un **anemómetro con salida RS48
 
 <img width="220" height="220" alt="image" src="https://github.com/user-attachments/assets/d7884215-2c5e-4f8c-a152-a38dfabb4dea" />
 <img width="220" height="220" alt="image" src="https://github.com/user-attachments/assets/ff7984eb-23db-465c-ad59-f6c2fb85383c" />
+
 Una vez que la ESP32 realiza la lectura de todos los sensores integrados (aproximadamente cada **5 segundos**), procesa la información y la expone mediante una arquitectura de red dual que combina monitoreo local e IoT en la nube simultáneamente:
 
 1. **Servidor Web Local en Tiempo Real (Modo AP):** La ESP32 crea un punto de acceso Wi-Fi propio (`SSID: EstacionMeteo`) donde aloja un **servidor web asíncrono (`ESPAsyncWebServer`)** en la IP `192.168.4.1`. La interfaz web (almacenada en `PROGMEM` / `pagina_web.h`) consulta automáticamente el endpoint `/datos` mediante peticiones `XMLHttpRequest` en segundo plano **cada 10 segundos**. Esto actualiza los indicadores, alertas y gráficos locales de forma instantánea sin requerir recargas de página ni depender de una conexión a Internet.
