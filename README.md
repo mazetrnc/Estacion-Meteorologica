@@ -24,9 +24,28 @@ La **velocidad del viento** se obtiene mediante un **anemómetro con salida RS48
 
 <img width="220" height="220" alt="image" src="https://github.com/user-attachments/assets/d7884215-2c5e-4f8c-a152-a38dfabb4dea" />
 <img width="220" height="220" alt="image" src="https://github.com/user-attachments/assets/ff7984eb-23db-465c-ad59-f6c2fb85383c" />
+Una vez que la ESP32 realiza la lectura de todos los sensores integrados (aproximadamente cada **5 segundos**), procesa la información y la expone mediante una arquitectura de red dual que combina monitoreo local e IoT en la nube simultáneamente:
 
-Una vez que todos los sensores han sido leídos mediante la función `updateSensors()`, los datos son enviados a internet utilizando la conexión **WiFi integrada en la ESP32**. El microcontrolador se conecta a la red inalámbrica y realiza una **petición HTTP GET** al servidor de la plataforma **ThingSpeak**, incluyendo cada variable medida como un campo dentro del canal configurado.
+1. **Servidor Web Local en Tiempo Real (Modo AP):** La ESP32 crea un punto de acceso Wi-Fi propio (`SSID: EstacionMeteo`) donde aloja un **servidor web asíncrono (`ESPAsyncWebServer`)** en la IP `192.168.4.1`. La interfaz web (almacenada en `PROGMEM` / `pagina_web.h`) consulta automáticamente el endpoint `/datos` mediante peticiones `XMLHttpRequest` en segundo plano **cada 10 segundos**. Esto actualiza los indicadores, alertas y gráficos locales de forma instantánea sin requerir recargas de página ni depender de una conexión a Internet.
 
-Finalmente, ThingSpeak almacena estos datos en la nube, permitiendo su **visualización en tiempo real, almacenamiento histórico y análisis mediante gráficas**. El sistema respeta el intervalo mínimo de actualización de la plataforma, enviando datos aproximadamente cada **20 minutos**, lo que garantiza un funcionamiento estable y evita el rechazo de las solicitudes.
+2. **Publicación Remota en la Nube (Modo STA - ThingSpeak):** De forma paralela y utilizando la misma interfaz de red (`WIFI_AP_STA`), la ESP32 se conecta como cliente a un router local con salida a Internet. **Cada 5 minutos (`POST_INTERVAL_MS = 300000`)**, el microcontrolador realiza una **petición HTTP GET** al servidor de **ThingSpeak** (`api.thingspeak.com`), mapeando las lecturas a los campos del canal:
 
-En conjunto, esta estación meteorológica integra sensores ambientales, protocolos de comunicación y conectividad IoT para crear un sistema capaz de **monitorear condiciones climáticas y ambientales y publicar los resultados en una plataforma en línea para su análisis y visualización remota**.
+* **Field 1:** Temperatura (°C)
+
+* **Field 2:** Humedad (%)
+
+* **Field 3:** Presión (hPa)
+
+* **Field 4:** Velocidad del viento (m/s)
+
+* **Field 5:** eCO₂ (ppm)
+
+* **Field 6:** TVOC (ppb)
+
+* **Field 7:** Precipitación / Tasa (mm/h)
+
+* **Field 8:** Índice UV (OMS)
+
+Ambos modos funcionan simultáneamente y de forma totalmente independiente: si la conexión Wi-Fi a Internet falla o no está disponible, el envío a ThingSpeak se omite temporalmente sin afectar la operación del servidor web local, el cual sigue sirviendo los datos en tiempo real de forma ininterrumpida.
+
+En conjunto, esta estación meteorológica integra sensores ambientales de precisión, protocolos de comunicación industrial y de bus (I2C y RS485/Modbus RTU), servidor web embebido y conectividad IoT híbrida para crear un sistema robusto capaz de **monitorear condiciones climáticas en tiempo real de forma local y, al mismo tiempo, publicar los resultados en una plataforma en la nube para su almacenamiento histórico y análisis remoto**.
