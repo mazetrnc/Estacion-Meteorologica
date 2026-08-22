@@ -20,8 +20,7 @@
 //    - Adafruit LTR390 Library
 //    - Adafruit SGP30 Library
 //    - Adafruit Unified Sensor
-//    - ESPAsyncWebServer  (by ESP Async Team)
-//    - AsyncTCP           (by ESP Async Team)
+//    - WebServer          (nativo del core ESP32, no requiere instalación)
 //    - ArduinoJson        (by Benoit Blanchon)
 //    - ModbusMaster       (by Doc Walker)
 //
@@ -49,7 +48,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <ESPAsyncWebServer.h>
+#include <WebServer.h>
 #include <ArduinoJson.h>
 #include <ModbusMaster.h>
 
@@ -127,7 +126,7 @@ const char* AP_SSID = "EstacionMeteo";
 const char* AP_PASS = "estacion123";
 
 // ── STA / WiFi (para internet, si está disponible) ────────
-const char* WIFI_SSID     = "Infinix HOT 50 Pro+";
+const char* WIFI_SSID     = "Galaxy A17";
 const char* WIFI_PASSWORD = "12345678";
 const unsigned long WIFI_CONNECT_TIMEOUT = 15000;
 
@@ -138,8 +137,8 @@ String      WRITE_API_KEY   = "G3HHRN4N0G8XNWBY";
 
 WiFiClient client;
 
-// ── SERVIDOR WEB ASÍNCRONO (vía AP) ───────────────────────
-AsyncWebServer server(80);
+// ── SERVIDOR WEB (vía AP) ─────────────────────────────────
+WebServer server(80);
 
 
 // ─────────────────────────────────────────────────────────
@@ -314,11 +313,11 @@ void setup() {
   connectToWiFiSTA();
 
   // ── Rutas del servidor web local (vía AP) ─────────────
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest* req) {
-    req->send_P(200, "text/html", HTML_PAGE);
+  server.on("/", HTTP_GET, []() {
+    server.send_P(200, "text/html", HTML_PAGE);
   });
 
-  server.on("/datos", HTTP_GET, [](AsyncWebServerRequest* req) {
+  server.on("/datos", HTTP_GET, []() {
     StaticJsonDocument<512> doc;
     doc["temperatura"]    = datos.temperatura;
     doc["presion"]        = datos.presion;
@@ -343,11 +342,11 @@ void setup() {
 
     String json;
     serializeJson(doc, json);
-    req->send(200, "application/json", json);
+    server.send(200, "application/json", json);
   });
 
-  server.onNotFound([](AsyncWebServerRequest* req) {
-    req->send(404, "text/plain", "no encontrado");
+  server.onNotFound([]() {
+    server.send(404, "text/plain", "no encontrado");
   });
 
   server.begin();
@@ -388,6 +387,8 @@ void setup() {
 unsigned long ultimaLecturaSGP = 0;
 
 void loop() {
+  server.handleClient();
+
   unsigned long ahora = millis();
 
   // SGP30: leer exactamente cada 1000 ms (requisito del sensor)
@@ -497,5 +498,6 @@ void loop() {
     }
   }
 
-  // Sin delay() — el loop corre libre, AsyncWebServer no se bloquea
+  // Sin delay() largo en el loop — server.handleClient() necesita
+  // ejecutarse frecuentemente para atender las peticiones web
 }
