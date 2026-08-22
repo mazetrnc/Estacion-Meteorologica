@@ -20,9 +20,25 @@
 //    - Adafruit LTR390 Library
 //    - Adafruit SGP30 Library
 //    - Adafruit Unified Sensor
-//    - WebServer          (nativo del core ESP32, no requiere instalación)
+//    - ESPAsyncWebServer  (por "ESP32Async" — NO el original de me-no-dev,
+//                          que está archivado y da el error de assert
+//                          "tcp_alloc ... Required to lock TCPIP core
+//                          functionality" en el core ESP32 3.x / IDF 5.x)
+//    - AsyncTCP           (por "ESP32Async" — misma organización que la
+//                          librería anterior, deben instalarse juntas)
 //    - ArduinoJson        (by Benoit Blanchon)
 //    - ModbusMaster       (by Doc Walker)
+//
+//  INSTALACIÓN CORRECTA (Library Manager de Arduino IDE):
+//    1. Si ya tienes instaladas versiones viejas de ESPAsyncWebServer o
+//       AsyncTCP, elimínalas primero (Administrador de Bibliotecas → busca
+//       el nombre → "Eliminar" o borra la carpeta en Documentos/Arduino/libraries).
+//    2. Busca "ESPAsyncWebServer" y en la lista de autores elige la
+//       mantenida por "ESP32Async" (no la de "ESP32Async Team" antigua
+//       ni la original archivada).
+//    3. Busca "AsyncTCP" e instala también la de "ESP32Async".
+//    4. Ambas deben quedar de la MISMA organización/fork para ser
+//       compatibles entre sí.
 //
 //  ESTRUCTURA DE ARCHIVOS (misma carpeta):
 //    estacion_meteorologica_completa.ino   ← este archivo
@@ -48,7 +64,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include <ModbusMaster.h>
 
@@ -137,8 +153,8 @@ String      WRITE_API_KEY   = "G3HHRN4N0G8XNWBY";
 
 WiFiClient client;
 
-// ── SERVIDOR WEB (vía AP) ─────────────────────────────────
-WebServer server(80);
+// ── SERVIDOR WEB ASÍNCRONO (vía AP) ───────────────────────
+AsyncWebServer server(80);
 
 
 // ─────────────────────────────────────────────────────────
@@ -313,11 +329,11 @@ void setup() {
   connectToWiFiSTA();
 
   // ── Rutas del servidor web local (vía AP) ─────────────
-  server.on("/", HTTP_GET, []() {
-    server.send_P(200, "text/html", HTML_PAGE);
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest* req) {
+    req->send_P(200, "text/html", HTML_PAGE);
   });
 
-  server.on("/datos", HTTP_GET, []() {
+  server.on("/datos", HTTP_GET, [](AsyncWebServerRequest* req) {
     StaticJsonDocument<512> doc;
     doc["temperatura"]    = datos.temperatura;
     doc["presion"]        = datos.presion;
@@ -342,11 +358,11 @@ void setup() {
 
     String json;
     serializeJson(doc, json);
-    server.send(200, "application/json", json);
+    req->send(200, "application/json", json);
   });
 
-  server.onNotFound([]() {
-    server.send(404, "text/plain", "no encontrado");
+  server.onNotFound([](AsyncWebServerRequest* req) {
+    req->send(404, "text/plain", "no encontrado");
   });
 
   server.begin();
@@ -387,8 +403,6 @@ void setup() {
 unsigned long ultimaLecturaSGP = 0;
 
 void loop() {
-  server.handleClient();
-
   unsigned long ahora = millis();
 
   // SGP30: leer exactamente cada 1000 ms (requisito del sensor)
@@ -498,6 +512,5 @@ void loop() {
     }
   }
 
-  // Sin delay() largo en el loop — server.handleClient() necesita
-  // ejecutarse frecuentemente para atender las peticiones web
+  // Sin delay() — el loop corre libre, AsyncWebServer no se bloquea
 }
