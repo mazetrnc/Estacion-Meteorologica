@@ -373,6 +373,7 @@ void setup() {
   datos.presion       = bme.readPressure() / 100.0F;
   datos.altitud       = bme.readAltitude(SEALEVELPRESSURE_HPA);
   datos.humedad       = bme.readHumidity();
+  sgp.setHumidity(getAbsoluteHumidity(datos.temperatura, datos.humedad));
   datos.lux           = 0;
   datos.uvi           = 0;
   datos.uvRaw         = 0;
@@ -398,6 +399,22 @@ void setup() {
 
 
 // ─────────────────────────────────────────────────────────
+//  Compensación de humedad absoluta para el SGP30
+//  Fórmula de aproximación (Sensirion SGP30 Driver Integration,
+//  cap. 3.15) a partir de temperatura y humedad relativa del BME280.
+//  Devuelve el valor en formato fijo mg/m^3 que espera setHumidity().
+// ─────────────────────────────────────────────────────────
+uint32_t getAbsoluteHumidity(float temperatura, float humedadRelativa) {
+  const float humedadAbsoluta = 216.7f *
+      ((humedadRelativa / 100.0f) * 6.112f *
+       exp((17.62f * temperatura) / (243.12f + temperatura)) /
+       (273.15f + temperatura)); // g/m^3
+  const uint32_t humedadAbsolutaEscalada =
+      static_cast<uint32_t>(1000.0f * humedadAbsoluta); // mg/m^3
+  return humedadAbsolutaEscalada;
+}
+
+// ─────────────────────────────────────────────────────────
 //  LOOP
 // ─────────────────────────────────────────────────────────
 unsigned long ultimaLecturaSGP = 0;
@@ -408,6 +425,11 @@ void loop() {
   // SGP30: leer exactamente cada 1000 ms (requisito del sensor)
   if (ahora - ultimaLecturaSGP >= 1000) {
     ultimaLecturaSGP = ahora;
+
+    // Compensación de humedad absoluta usando la última
+    // lectura disponible del BME280 (temperatura y humedad relativa)
+    sgp.setHumidity(getAbsoluteHumidity(datos.temperatura, datos.humedad));
+
     if (!sgp.IAQmeasure()) {
       Serial.println("[SGP30] Error de lectura.");
     }
